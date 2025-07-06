@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-
+from passlib.hash import bcrypt
 
 #############################################################
 #############################################################
@@ -16,7 +16,10 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_BASE_DIR = os.path.join("storage", "data")
 os.makedirs(DB_BASE_DIR, exist_ok=True)
+PASSWORD_HASH_MECHANISM = bcrypt
 
+CURRENT_USER_SESSION_KEY = "current_user"
+DEFAULT_PASSWORD_LENGTH = 4
 
 
 #############################################################
@@ -30,4 +33,4 @@ os.makedirs(DB_BASE_DIR, exist_ok=True)
 #############################################################
 #############################################################
 #############################################################
-DATABASE_PATH = os.path.join(DB_BASE_DIR, "database.db")
+DATABASE_PATH = os.path.join(DB_BASE_DIR, os.environ.get("DATABASE_NAME", "database.db"))

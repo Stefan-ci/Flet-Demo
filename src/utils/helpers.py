@@ -62,6 +62,15 @@ def all_default_views():
             "icon": ft.Icons.PRODUCTION_QUANTITY_LIMITS,
             "route_data": Routes.STOCK_MANAGEMENT,
         },
+        
+        # Browser
+        {
+            "route": Routes.BROWSER.value,
+            "title": "Tiny Browser",
+            "desc": "A custom built-in browser",
+            "icon": ft.Icons.SEARCH,
+            "route_data": Routes.BROWSER,
+        },
     ]
     
     return views

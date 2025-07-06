@@ -1,22 +1,80 @@
 import sqlite3, logging
 from typing import Optional
 from passlib.hash import bcrypt
-# import bcrypt
 
 from utils.settings import DATABASE_PATH
+from utils.databases import ProductDBUtil, UserDBUtil
+
 
 logging.getLogger(__name__)
 
 
+
+
+class DatabaseInterface:
+    def __init__(self):
+        self.DB_NAME = DATABASE_PATH
+        self.CONNECTION = sqlite3.connect(self.DB_NAME, check_same_thread=False)
+        self.CURSOR = self.CONNECTION.cursor()
+        
+        self._products_objects = None
+        self._users_objects = None
+    
+    def close(self):
+        if self.CONNECTION:
+            self.CURSOR.close()
+            self.CONNECTION.close()
+    
+    def __del__(self):
+        self.close()
+    
+    @property
+    def products_objects(self):
+        if not self._products_objects:
+            self._products_objects = ProductDBUtil(connection=self.CONNECTION, cursor=self.CURSOR)
+        return self._products_objects
+    
+    @property
+    def users_objects(self):
+        if not self._users_objects:
+            self._users_objects = UserDBUtil(connection=self.CONNECTION, cursor=self.CURSOR)
+        return self._users_objects
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class DatabaseQuery:
     """ Utility to communicate with the DB """
+    
+    DB_NAME = DATABASE_PATH
+    CONNECTION = sqlite3.connect(DB_NAME, check_same_thread=False)
+    CURSOR = CONNECTION.cursor()
+    
+    
     def __init__(self):
-        self.db_name = DATABASE_PATH
-        self.connection = sqlite3.connect(self.db_name, check_same_thread=False)
-        self.cursor = self.connection.cursor()
+        pass
+        
+        # Creating tables
+        self._create_tables()
     
     def _create_tables(self):
         self.create_user_table()
+        self.create_products_table()
     
     def create_user_table(self):
         self.cursor.execute("""
@@ -29,6 +87,19 @@ class DatabaseQuery:
             );
         """)
         self.connection.commit()
+    
+    
+    def create_products_table(self):
+        fields_sql = ",\n    ".join([f"{name} {definition}" for name, definition in ProductDBUtil().product_fields.items()])
+        sql = f"""
+            CREATE TABLE IF NOT EXISTS products (
+                {fields_sql}
+            );
+        """
+        self.cursor.execute(sql)
+        self.connection.commit()
+    
+    
     
     def _check_user_exists(self, username: str):
         self.cursor.execute("SELECT password FROM users WHERE username = ?", (username,))

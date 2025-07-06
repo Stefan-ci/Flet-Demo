@@ -14,6 +14,7 @@ flet-audio==0.1.0
 flet-cli==0.27.6
 flet-desktop==0.27.6
 flet-web==0.27.6
+flet-webview==0.1.0
 h11==0.14.0
 httpcore==1.0.7
 httptools==0.6.4

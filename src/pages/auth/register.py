@@ -1,6 +1,9 @@
+import re
 import flet as ft
 from utils import Routes
-from utils.database import DatabaseQuery
+from utils.databases.models import UserModel
+from utils.databases.interface import DatabaseInterface
+from utils.settings import CURRENT_USER_SESSION_KEY, DEFAULT_PASSWORD_LENGTH
 
 
 class RegisterPage(ft.Column):
@@ -18,21 +21,25 @@ class RegisterPage(ft.Column):
         self.username_input = ft.TextField(
             label="Username",
             keyboard_type=ft.KeyboardType.TEXT,
+            on_submit=self._handle_register,
         )
         
-        self.username_input = ft.TextField(
-            label="Username",
-            keyboard_type=ft.KeyboardType.TEXT,
+        self.email_input = ft.TextField(
+            label="Email",
+            keyboard_type=ft.KeyboardType.EMAIL,
+            on_submit=self._handle_register,
         )
         
         self.first_name_input = ft.TextField(
             label="First name",
             keyboard_type=ft.KeyboardType.TEXT,
+            on_submit=self._handle_register,
         )
         
         self.last_name_input = ft.TextField(
             label="Last name",
             keyboard_type=ft.KeyboardType.TEXT,
+            on_submit=self._handle_register,
         )
         
         self.password_input = ft.TextField(
@@ -40,6 +47,7 @@ class RegisterPage(ft.Column):
             password=True,
             keyboard_type=ft.KeyboardType.VISIBLE_PASSWORD,
             can_reveal_password=True,
+            on_submit=self._handle_register,
         )
         
         self.submit_button = ft.ElevatedButton(
@@ -56,6 +64,7 @@ class RegisterPage(ft.Column):
                 controls=[
                     ft.Text("Create Your Account", size=30, weight=ft.FontWeight.BOLD),
                     self.username_input,
+                    self.email_input,
                     self.first_name_input,
                     self.last_name_input,
                     self.password_input,
@@ -88,6 +97,7 @@ class RegisterPage(ft.Column):
     
     def _handle_register(self, e):
         username = self.username_input.value.strip()
+        email = self.email_input.value.strip()
         first_name = self.first_name_input.value
         last_name = self.last_name_input.value
         password = self.password_input.value # can be empty or not, no need to strip it
@@ -97,28 +107,43 @@ class RegisterPage(ft.Column):
             self.page.update()
             return
         
-        if not last_name or last_name == "":
+        if not last_name.strip() or last_name.strip() == "":
             self.page.open(ft.AlertDialog(title=ft.Text("Error"), content=ft.Text("Enter a valid last name please")))
             self.page.update()
             return
         
-        db_instance = DatabaseQuery()
-        db_instance._create_tables()
-        
-        # check if user is available
-        if db_instance._check_user_exists(username=username):
-            alert = ft.AlertDialog(title=ft.Text("Error"), content=ft.Text("Username already exist. Choose a new one."))
-            self.page.open(alert)
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            self.page.open(ft.AlertDialog(title="Error", content=ft.Text("Invalid email format!")))
             return
         
-        # user exists
-        if db_instance.register_user(last_name=last_name, username=username, password=password, first_name=first_name):
+        if len(password) < DEFAULT_PASSWORD_LENGTH:
+            self.page.open(ft.AlertDialog(title="Error", content=ft.Text("Password too short!")))
+            return
+        
+        with DatabaseInterface() as db:
+            self.users_objects = db.users_objects
+            
+            # check if username is already taken
+            if self.users_objects.exists(username=username):
+                self.page.open(ft.AlertDialog(title=ft.Text("Warning"), content=ft.Text("Username already taken! Choose a new one.")))
+                return
+            
+            # validation: OK -> Create user
+            user: UserModel = self.users_objects.create(
+                username=username,
+                email=email,
+                last_name=last_name,
+                first_name=first_name,
+                password=password,
+            )
+            
+            # if there were no user and the current user is the first one, give him admin rights
+            if self.users_objects.count() <= 1:
+                self.users_objects.update(id=user.id, is_admin=True)
+            
+            
+            # user saved
             self.page.controls.clear()
-            
             self.page.open(ft.AlertDialog(title=ft.Text("Success"), content=ft.Text("Account created successfully. Login yet!", color=ft.Colors.GREEN)))
-            
             # Redirect to login
             self.page.go(route=Routes.LOGIN.value)
-        else:
-            self.page.add(ft.Text("Registration failed. Check your data", color="red"))
-            return

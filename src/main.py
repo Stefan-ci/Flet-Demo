@@ -30,6 +30,8 @@ def main(page: ft.Page):
     
     # open navbar on start
     page.open(NavbarComponent(page=page).build())
+    
+    print(page.views)
 
 
 
